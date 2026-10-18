@@ -1,0 +1,216 @@
+/* バトルの選択画面と対戦画面 (要素のIDとクラス名は js/battle.js と共有) */
+.select-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.select-col h2 { margin: 0 0 8px; font-size: 1.05rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.select-col .picked { font-size: .9rem; font-weight: 600; color: var(--accent); }
+.select-col .mon-grid { max-height: 46vh; overflow-y: auto; padding: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.start-bar { position: sticky; bottom: 0; display: flex; justify-content: center; padding: 14px 0 calc(14px + env(safe-area-inset-bottom, 0px)); margin-top: 16px; background: linear-gradient(transparent, var(--bg) 40%); }
+.start-bar .btn { min-width: 220px; }
+@media (max-width: 720px) {
+	.select-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 対戦画面 */
+#battle { max-width: 640px; margin: 0 auto; }
+
+/* フィールド配色: あいてのタイプの色が空と地面にうっすら混ざる */
+#game-screen {
+	--tint: var(--field-tint, var(--t-normal));
+	--sky-a: color-mix(in srgb, var(--tint) 16%, #a9d4ff);
+	--sky-b: color-mix(in srgb, var(--tint) 7%, #eef7ff);
+	--grass-a: color-mix(in srgb, var(--tint) 16%, #c4e6a6);
+	--grass-b: color-mix(in srgb, var(--tint) 22%, #86c474);
+	--hill: color-mix(in srgb, var(--tint) 18%, #a7d38f);
+	--hill-far: color-mix(in srgb, var(--tint) 20%, #bcdcc4);
+	--cloud: rgba(255, 255, 255, .85);
+	--platform-top: color-mix(in srgb, var(--grass-b) 55%, #fff);
+	position: relative;
+	width: 100%;
+	aspect-ratio: 16 / 10;
+	border-radius: 16px;
+	border: 1px solid var(--line);
+	box-shadow: var(--shadow);
+	overflow: hidden;
+	background:
+		radial-gradient(ellipse 15% 7% at 18% 14%, var(--cloud) 0 62%, transparent 66%),
+		radial-gradient(ellipse 11% 5% at 26% 17%, var(--cloud) 0 62%, transparent 66%),
+		radial-gradient(ellipse 13% 6% at 62% 9%, var(--cloud) 0 62%, transparent 66%),
+		radial-gradient(ellipse 55% 20% at 18% 59%, var(--hill-far) 0 70%, transparent 72%),
+		radial-gradient(ellipse 50% 17% at 88% 58%, var(--hill) 0 70%, transparent 72%),
+		linear-gradient(var(--sky-a), var(--sky-b) 58%, var(--grass-a) 58%, var(--grass-b));
+}
+@media (prefers-color-scheme: dark) {
+	#game-screen {
+		--sky-a: color-mix(in srgb, var(--tint) 26%, #0f1d38);
+		--sky-b: color-mix(in srgb, var(--tint) 16%, #213a5c);
+		--grass-a: color-mix(in srgb, var(--tint) 12%, #21412c);
+		--grass-b: color-mix(in srgb, var(--tint) 14%, #162b1e);
+		--hill: color-mix(in srgb, var(--tint) 12%, #1d3a29);
+		--hill-far: color-mix(in srgb, var(--tint) 14%, #1a3347);
+		--cloud: rgba(180, 200, 235, .16);
+		--platform-top: color-mix(in srgb, var(--grass-b) 70%, #6ea77f);
+	}
+}
+/* ポケモンの足もとの台座 */
+#game-screen::before, #game-screen::after {
+	content: "";
+	position: absolute;
+	z-index: 0;
+	border-radius: 50%;
+	background: radial-gradient(ellipse at 50% 35%, var(--platform-top), var(--grass-b) 75%);
+	box-shadow: 0 5px 0 rgba(0, 0, 0, .14);
+}
+#game-screen::before { top: 38%; right: 5%; width: 38%; height: 15%; }
+#game-screen::after { bottom: -5%; left: 2%; width: 46%; height: 19%; }
+#myImg, #enemyImg, .stats-window { z-index: 1; }
+#myImg, #enemyImg {
+	position: absolute;
+	width: 28%;
+	image-rendering: pixelated;
+	filter: drop-shadow(0 4px 3px rgba(0, 0, 0, .2));
+}
+#myImg { bottom: 2%; left: 8%; width: 34%; }
+#enemyImg { top: 6%; right: 10%; }
+
+.stats-window {
+	position: absolute;
+	width: 46%;
+	padding: 8px 12px 10px;
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--surface) 92%, transparent);
+	border: 1px solid var(--line);
+	box-shadow: var(--shadow);
+	font-size: clamp(.78rem, 2.6vw, 1rem);
+}
+#enemy-stats-window { top: 6%; left: 3%; }
+#my-stats-window { bottom: 6%; right: 3%; }
+
+.stats-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 700; }
+.pokemon-name { overflow-wrap: anywhere; }
+.pokemon-level { font-size: .85em; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hp-frame { height: .7em; margin-top: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.hp-bar { height: 100%; width: 100%; border-radius: 999px; background: #22c55e; transition: width .4s ease, background-color .4s ease; }
+.mark { display: none; }
+.hp-value { margin-top: 2px; text-align: right; font-variant-numeric: tabular-nums; font-size: .9em; }
+
+.aliment-stats {
+	display: inline-block;
+	margin-top: 4px;
+	padding: 0 8px;
+	border-radius: 999px;
+	font-size: .75em;
+	font-weight: 700;
+	color: #fff;
+	background: var(--muted);
+}
+.aliment-stats:empty { display: none; }
+.is-burned { background: #e8590c; }
+.is-paralyzed { background: #e0a800; color: #1b1b1b; }
+.is-poisoned { background: #9c36b5; }
+.is-freezed { background: #1c7ed6; }
+.is-sleeped { background: #5c6678; }
+
+#message-window {
+	min-height: 96px;
+	margin: 14px 0;
+	padding: 14px 16px;
+	border-radius: 12px;
+	border: 2px solid var(--fg);
+	background: var(--surface);
+	font-size: 1.1rem;
+	line-height: 1.7;
+}
+
+/* 技ボタン: 左にタイプの頭文字、右に技名とタイプ・威力 */
+.command-title { margin: 0 0 8px; font-size: .85rem; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
+.command { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+#enemy-commands { display: none; }
+.move {
+	--c: var(--t-normal);
+	--on: #fff;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	grid-template-rows: auto auto;
+	align-content: center;
+	align-items: center;
+	column-gap: 10px;
+	width: 100%;
+	min-height: 64px;
+	padding: 8px 14px 8px 10px;
+	border-radius: 14px;
+	border: 1px solid color-mix(in srgb, var(--c) 70%, #000);
+	background: linear-gradient(color-mix(in srgb, var(--c) 88%, #fff), var(--c));
+	box-shadow: 0 3px 0 color-mix(in srgb, var(--c) 62%, #000);
+	color: var(--on);
+	font: inherit;
+	font-weight: 700;
+	text-align: left;
+	line-height: 1.25;
+	cursor: pointer;
+	transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+}
+.move::before {
+	content: attr(data-initial);
+	grid-row: 1 / span 2;
+	display: grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, .92);
+	color: color-mix(in srgb, var(--c) 78%, #000);
+	font-size: .85rem;
+	font-weight: 800;
+}
+.move::after { content: attr(data-meta); grid-column: 2; font-size: .75rem; font-weight: 500; opacity: .92; }
+.move:hover { filter: brightness(1.07); }
+.move:active { transform: translateY(2px); box-shadow: 0 1px 0 color-mix(in srgb, var(--c) 62%, #000); }
+.move.normal { --c: var(--t-normal); }
+.move.fire { --c: var(--t-fire); }
+.move.water { --c: var(--t-water); }
+.move.electric { --c: var(--t-electric); --on: #1b1b1b; }
+.move.grass { --c: var(--t-grass); }
+.move.ice { --c: var(--t-ice); --on: #10282b; }
+.move.fighting { --c: var(--t-fighting); }
+.move.poison { --c: var(--t-poison); }
+.move.ground { --c: var(--t-ground); }
+.move.flying { --c: var(--t-flying); }
+.move.psychic { --c: var(--t-psychic); }
+.move.bug { --c: var(--t-bug); }
+.move.rock { --c: var(--t-rock); }
+.move.ghost { --c: var(--t-ghost); }
+.move.dragon { --c: var(--t-dragon); }
+.move.dark { --c: var(--t-dark); }
+.move.steel { --c: var(--t-steel); }
+.move.fairy { --c: var(--t-fairy); }
+
+.row.after { margin-top: 20px; justify-content: center; }
+
+/* 戦闘不能 */
+.knockout { animation: knockout-anim .5s linear forwards; }
+@keyframes knockout-anim { 100% { opacity: 0; transform: translateY(12px); } }
+
+/* 2人対戦 */
+.duel-mode #my-commands, .duel-mode > .command-title { display: none; }
+.player-tag { position: absolute; top: -10px; left: 10px; padding: 0 9px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: .75em; font-weight: 800; line-height: 1.6; }
+.player-tag.p2 { background: var(--accent); color: var(--accent-fg); }
+.duel .command-title { color: var(--fg); font-size: 1rem; letter-spacing: 0; }
+.duel-cover {
+	display: grid;
+	justify-items: center;
+	gap: 10px;
+	padding: 22px 16px;
+	text-align: center;
+	border-radius: 14px;
+	border: 2px dashed var(--line);
+	background: var(--surface);
+}
+.duel-cover p { margin: 0; text-wrap: balance; }
+.duel-cover .sub { color: var(--muted); font-size: .9rem; }
+.duel-wait { padding: 18px 0; text-align: center; color: var(--muted); }
+.duel-result { display: grid; justify-items: center; gap: 12px; padding: 18px 0; text-align: center; }
+.duel-result .win { font-size: 1.4rem; font-weight: 800; }
+
+.picked-line { margin: 0 0 12px; font-weight: 600; }
+.picked-line .picked { color: var(--accent); }
+#step-pick .mon-grid { max-height: none; }
